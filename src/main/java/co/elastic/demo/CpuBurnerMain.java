@@ -4,6 +4,8 @@ import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
+import org.bouncycastle.jcajce.provider.asymmetric.rsa.DigestSignatureSpi;
+import org.bouncycastle.jcajce.provider.digest.SHA3;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -16,7 +18,14 @@ public class CpuBurnerMain {
 
     public static volatile Object sink;
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, NoSuchAlgorithmException {
+
+        MessageDigest[] hashAlgos = new MessageDigest[] {
+          MessageDigest.getInstance("SHA-256"),
+          new SHA3.DigestSHA3(256)
+        };
+
+
         Thread t1 = new Thread(() -> {
             while (true) {
                 try {
@@ -33,8 +42,10 @@ public class CpuBurnerMain {
 
 
         Thread t2 = new Thread(() -> {
+            int iteration = 0;
             while (true) {
-                shaShenanigans();
+                iteration++;
+                shaShenanigans(hashAlgos[iteration % hashAlgos.length]);
                 try {
                     Thread.sleep(2000);
                 } catch (InterruptedException e) {
@@ -88,12 +99,15 @@ public class CpuBurnerMain {
         }
     }
 
-    public static void shaShenanigans() {
-        Span span = tracer.spanBuilder("shaShenanigans").startSpan();
+    public static void shaShenanigans(MessageDigest digest) {
+        Span span = tracer.spanBuilder("shaShenanigans")
+                .setAttribute("algorithm", digest.getAlgorithm())
+                .startSpan();
+
         try (var scope = span.makeCurrent()) {
             long start = System.nanoTime();
             while ((System.nanoTime() - start) < 100_000_000L) {
-                sink = hashRandomStuff();
+                sink = hashRandomStuff(digest);
             }
         } finally {
             span.end();
@@ -101,19 +115,14 @@ public class CpuBurnerMain {
     }
 
     @WithSpan
-    private static byte[] hashRandomStuff() {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            Random rnd = new Random();
-            byte[] buffer = new byte[1024];
-            for (int i = 0; i < 5000; i++) {
-                rnd.nextBytes(buffer);
-                digest.update(buffer);
-            }
-            return digest.digest();
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+    private static byte[] hashRandomStuff(MessageDigest digest) {
+        Random rnd = new Random();
+        byte[] buffer = new byte[1024];
+        for (int i = 0; i < 5000; i++) {
+            rnd.nextBytes(buffer);
+            digest.update(buffer);
         }
+        return digest.digest();
     }
 
 
