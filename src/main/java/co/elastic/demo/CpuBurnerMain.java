@@ -69,9 +69,9 @@ public class CpuBurnerMain {
         });
 
         Thread[] threads = {
-                t1,
+               // t1,
                 t2,
-                t3
+               // t3
         };
         for (Thread thread : threads) {
             thread.start();
