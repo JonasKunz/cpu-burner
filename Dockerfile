@@ -9,7 +9,7 @@ COPY . .
 RUN ./mvnw package
 
 # Download /build/elastic-otel-javaagent.jar
-ARG ELASTIC_OTEL_JAVAAGENT_VERSION=0.3.2
+ARG ELASTIC_OTEL_JAVAAGENT_VERSION=1.0.0
 RUN wget --tries=5 -qO- https://repo1.maven.org/maven2/co/elastic/otel/elastic-otel-javaagent/${ELASTIC_OTEL_JAVAAGENT_VERSION}/elastic-otel-javaagent-${ELASTIC_OTEL_JAVAAGENT_VERSION}.jar > ./elastic-otel-javaagent.jar
 
 FROM eclipse-temurin:21-jre-ubi9-minimal
